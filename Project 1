@@ -1,5 +1,84 @@
-import math
+from calendar import c
+from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+import matplotlib.pyplot as plt
 import random
+import math
 
-def distance (city1, city2):
-  return math.sqrt((city1[0] - city2[0])**2 + (city1[1] - city2[1])**2)
+def randomCities(n):
+    return np.random.rand(n,2) * 100 #generate random pos (x,y) for n # of cities
+
+def distance(pos1, pos2):
+    return math.sqrt(pow(pos2[0] - pos1[0],2) + pow(pos2[1] - pos1[1],2))
+
+def totalDistance(n, cities, path):
+    total = 0
+    for row in range(n-1):
+        total += distance(cities[path[row]],cities[path[row + 1]])
+    return total
+
+def euclideanDistance(point1, point2):
+    return np.sqrt(np.sum((point1 - point2)**2))
+
+def nearestNeighbor(path, cities):
+    currentPointIdx = path[0]
+    visited = [False] * len(path)
+    visited[currentPointIdx] = True
+    newPath = [currentPointIdx]
+    for i in range(len(path) - 1):
+        minDistance = float('inf')
+        nearestPointIdx = -1
+        for j in path:
+            if not visited[j]:
+                distance = euclideanDistance(cities[currentPointIdx], cities[j])
+                if distance < minDistance:
+                    minDistance = distance
+                    nearestPointIdx = j
+        visited[nearestPointIdx] = True
+        currentPointIdx = nearestPointIdx
+        newPath.append(currentPointIdx)
+    return newPath
+
+
+def simulatedAnnealing(cities, initTemp):
+    n = len(cities)
+    currentPath = list(range(n))
+    random.shuffle(currentPath)
+    currentCost = totalDistance(n, cities,currentPath)
+    bestPath, bestCost = currentPath[:], currentCost
+    temperature = initTemp
+
+    for i in range(10000):
+        newPath = nearestNeighbor(currentPath[:], cities)
+        newCost = totalDistance(n,cities,newPath)
+        if newCost < currentCost or random.random() < math.exp((currentCost - newCost) / temperature):
+            currentPath, currentCost = newPath, newCost
+
+        if currentCost < bestCost:
+            bestPath, bestCost = currentPath[:], currentCost
+
+        temperature *= 0.995
+        if temperature < 1e-3:
+            break
+
+    return bestPath, bestCost
+
+def plotTsp(cities, path, title):
+    plt.figure(figsize=(8, 6))
+    ordered_cities = np.array([cities[i] for i in path] + [cities[path[0]]])
+    plt.plot(ordered_cities[:, 0], ordered_cities[:, 1], 'o-', markersize=5, label="Path")
+    plt.scatter(cities[:, 0], cities[:, 1], c='red', marker='o')
+    plt.title(title)
+    plt.show()
+
+
+cityList = randomCities(100)
+n = len(cityList)
+print(n)
+cityDistance = totalDistance(n, cityList, range(n))
+print(cityList)
+print(cityDistance)
+
+saPath, saCost = simulatedAnnealing(cityList, 1000)
+
+plotTsp(cityList,saPath, "Simulated Annealing")
