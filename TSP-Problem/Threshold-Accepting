@@ -1,0 +1,72 @@
+#Threshold Accepting
+
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+import math
+
+#Number of cities
+CITY_SIZE = 50
+THRESHOLD = 100
+ALPHA = 0.9995
+
+#Initialize city list
+def RandomCities(size):
+    return np.random.rand(size, 2) * 200
+
+#Define Functions
+def distance(city1, city2):
+    return math.sqrt((city1[0] + city2[0]) ** 2 + (city1[1] + city2[1]) ** 2)
+
+def total_distance(route):
+    total = 0.0
+    for i in range(CITY_SIZE):
+        total += distance(cities[route[i]], cities[route[(i + 1) % CITY_SIZE ] % CITY_SIZE])
+    return total
+
+def generate_random_route():
+    route = list(range(CITY_SIZE))
+    random.shuffle(route)
+    return route
+
+def threshold_accepting(current_route):
+    current_threshold = THRESHOLD #Initialize threshold
+
+    for _ in range(CITY_SIZE): #Rounds
+        for _ in range(10000): #Steps
+            new_route = current_route[:] # Make a copy of current_route
+            i, j = random.sample(range(CITY_SIZE), 2)
+            new_route[i], new_route[j] = new_route[j], new_route[i]
+            
+            current_dist = total_distance(current_route)
+            new_dist = total_distance(new_route)
+            if (new_dist - current_dist) < current_threshold:
+                current_route = new_route
+        
+        current_threshold *= ALPHA
+
+    return current_route
+
+def plotRoute(citylist, route, title):
+    plt.figure(figsize=(8, 6))
+    city_plot = np.array([citylist[i] for i in route] + [citylist[route[0]]])
+    plt.plot(city_plot[:,0], city_plot[:,1], markersize=5, label="Path")
+    plt.scatter(citylist[:, 0], citylist[:, 1], c='red', marker='o')
+    plt.title(title)
+    plt.show()
+
+
+#Run algorithm
+cities = RandomCities(CITY_SIZE)
+route = generate_random_route()
+print("Initial Distance: ", total_distance(route))
+
+plotRoute(cities, route, "Before Threshold Accepting")
+
+best_route = threshold_accepting(route)
+grand_total = total_distance(best_route)
+
+print("Best route: ", best_route)
+print("Best distance: ", grand_total)
+
+plotRoute(cities, best_route, "After Threshold Accepting")
