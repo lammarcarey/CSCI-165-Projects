@@ -1,0 +1,57 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+import math
+
+def randomCities(n):
+    return np.random.rand(n, 2) * 100
+
+def distance(pos1, pos2):
+    return math.sqrt(pow(pos2[0] - pos1[0], 2) + pow(pos2[1] - pos1[1], 2))
+
+def totalDistance(cities, path):
+    total = 0
+    for i in range(len(path) - 1):
+        total += distance(cities[path[i]], cities[path[i + 1]])
+    total += distance(cities[path[-1]], cities[path[0]]) 
+    return total
+
+def random_neighbor(path):
+    new_path = path[:] 
+    a, b = random.sample(range(len(path)), 2)
+    new_path[a], new_path[b] = new_path[b], new_path[a]
+    return new_path
+
+def hillClimbing(cities, iterations=10000):
+    n = len(cities)
+    currentPath = list(range(n))
+    random.shuffle(currentPath)
+    currentCost = totalDistance(cities, currentPath)
+    bestPath, bestCost = currentPath[:], currentCost
+
+    for _ in range(iterations):
+        newPath = random_neighbor(currentPath) 
+        newCost = totalDistance(cities, newPath)
+
+        if newCost < bestCost:
+            bestPath, bestCost = newPath[:], newCost
+            currentPath, currentCost = newPath[:], newCost
+
+    return bestPath, bestCost
+
+def plotTsp(cities, path, title):
+    plt.figure(figsize=(8, 6))
+    ordered_cities = np.array([cities[i] for i in path] + [cities[path[0]]])  # Complete the cycle
+    plt.plot(ordered_cities[:, 0], ordered_cities[:, 1], 'o-', markersize=5, label="Path")
+    plt.scatter(cities[:, 0], cities[:, 1], c='red', marker='o')
+    plt.title(title)
+    plt.show()
+
+cityList = randomCities(100)
+initialPath = list(range(len(cityList)))
+cityDistance = totalDistance(cityList, initialPath)
+print(f"City Distance: {cityDistance}")
+
+hcPath, hcCost = hillClimbing(cityList)
+
+plotTsp(cityList, hcPath, "Hill Climbing")
