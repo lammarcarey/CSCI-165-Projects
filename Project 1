@@ -1,5 +1,3 @@
-from calendar import c
-from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 import matplotlib.pyplot as plt
 import random
@@ -9,36 +7,19 @@ def randomCities(n):
     return np.random.rand(n,2) * 100 #generate random pos (x,y) for n # of cities
 
 def distance(pos1, pos2):
-    return math.sqrt(pow(pos2[0] - pos1[0],2) + pow(pos2[1] - pos1[1],2))
+    return math.sqrt(pow(pos2[0] - pos1[0],2) + pow(pos2[1] - pos1[1],2)) #dist between two cities
 
 def totalDistance(n, cities, path):
     total = 0
     for row in range(n-1):
-        total += distance(cities[path[row]],cities[path[row + 1]])
+        total += distance(cities[path[row]],cities[path[row + 1]]) #calc dist of complete path
     return total
 
-def euclideanDistance(point1, point2):
-    return np.sqrt(np.sum((point1 - point2)**2))
-
-def nearestNeighbor(path, cities):
-    currentPointIdx = path[0]
-    visited = [False] * len(path)
-    visited[currentPointIdx] = True
-    newPath = [currentPointIdx]
-    for i in range(len(path) - 1):
-        minDistance = float('inf')
-        nearestPointIdx = -1
-        for j in path:
-            if not visited[j]:
-                distance = euclideanDistance(cities[currentPointIdx], cities[j])
-                if distance < minDistance:
-                    minDistance = distance
-                    nearestPointIdx = j
-        visited[nearestPointIdx] = True
-        currentPointIdx = nearestPointIdx
-        newPath.append(currentPointIdx)
-    return newPath
-
+def randomNeighbor(path):
+    new_path = path[:] 
+    a, b = random.sample(range(len(path)), 2)
+    new_path[a], new_path[b] = new_path[b], new_path[a] #swap two random cities in path
+    return new_path
 
 def simulatedAnnealing(cities, initTemp):
     n = len(cities)
@@ -49,7 +30,7 @@ def simulatedAnnealing(cities, initTemp):
     temperature = initTemp
 
     for i in range(10000):
-        newPath = nearestNeighbor(currentPath[:], cities)
+        newPath = randomNeighbor(currentPath[:])
         newCost = totalDistance(n,cities,newPath)
         if newCost < currentCost or random.random() < math.exp((currentCost - newCost) / temperature):
             currentPath, currentCost = newPath, newCost
@@ -58,8 +39,42 @@ def simulatedAnnealing(cities, initTemp):
             bestPath, bestCost = currentPath[:], currentCost
 
         temperature *= 0.995
-        if temperature < 1e-3:
-            break
+        #if temperature < 1e-3:
+        #    break
+
+    return bestPath, bestCost
+
+def thresholdAccepting(cities, threshold=10):
+    n = len(cities)
+    currentPath = list(range(n))
+    random.shuffle(currentPath)
+    currentCost = totalDistance(n,cities, currentPath)
+    bestPath, bestCost = currentPath[:], currentCost
+    for i in range(n):
+        for j in range(100):
+            newPath = randomNeighbor(currentPath[:])
+            newCost = totalDistance(n,cities, newPath)
+            if (newCost - currentCost) < threshold:
+                currentPath, currentCost = newPath, newCost
+            if newCost < bestCost:
+                bestPath, bestCost = newPath[:], newCost
+        threshold *= 0.995
+    return bestPath, bestCost
+
+def hillClimbing(cities, iterations=10000):
+    n = len(cities)
+    currentPath = list(range(n))
+    random.shuffle(currentPath)
+    currentCost = totalDistance(n,cities, currentPath)
+    bestPath, bestCost = currentPath[:], currentCost
+
+    for _ in range(iterations):
+        newPath = randomNeighbor(currentPath[:]) 
+        newCost = totalDistance(n,cities, newPath)
+
+        if newCost < bestCost:
+            bestPath, bestCost = newPath[:], newCost
+            currentPath, currentCost = newPath[:], newCost
 
     return bestPath, bestCost
 
@@ -80,5 +95,12 @@ print(cityList)
 print(cityDistance)
 
 saPath, saCost = simulatedAnnealing(cityList, 1000)
+print("simulated annealing done")
+hcPath, hcCost = hillClimbing(cityList)
+print("hill climbing done")
+taPath, taCost = thresholdAccepting(cityList)
+print("threshold accepting done")
 
 plotTsp(cityList,saPath, "Simulated Annealing")
+plotTsp(cityList,hcPath, "Hill Climbing")
+plotTsp(cityList,taPath, "Threshold Accepting")
