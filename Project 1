@@ -2,105 +2,178 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import math
+import time
 
+#city grid
+#generate random pos (x,y) for n # of cities
 def randomCities(n):
-    return np.random.rand(n,2) * 100 #generate random pos (x,y) for n # of cities
+    return np.random.rand(n,2) * 100 
 
+#dist between two cities
 def distance(pos1, pos2):
-    return math.sqrt(pow(pos2[0] - pos1[0],2) + pow(pos2[1] - pos1[1],2)) #dist between two cities
+    return math.sqrt(pow(pos2[0] - pos1[0],2) + pow(pos2[1] - pos1[1],2)) 
 
+#calc dist of complete path
 def totalDistance(n, cities, path):
     total = 0
     for row in range(n-1):
-        total += distance(cities[path[row]],cities[path[row + 1]]) #calc dist of complete path
+        total += distance(cities[path[row]],cities[path[row + 1]]) 
+    total += distance(cities[path[n-1]],cities[path[0]]) #return to start
     return total
 
+#swap two random cities in path
 def randomNeighbor(path):
-    new_path = path[:] 
+    newPath = path[:] 
     a, b = random.sample(range(len(path)), 2)
-    new_path[a], new_path[b] = new_path[b], new_path[a] #swap two random cities in path
-    return new_path
+    newPath[a], newPath[b] = newPath[b], newPath[a] 
+    return newPath
 
-def simulatedAnnealing(cities, initTemp):
+def simulatedAnnealing(cities, iterations, initTemp):
     n = len(cities)
     currentPath = list(range(n))
+    #creating first solution
     random.shuffle(currentPath)
     currentCost = totalDistance(n, cities,currentPath)
+    #best path/cost found throughout all iterations will be returned at end
     bestPath, bestCost = currentPath[:], currentCost
     temperature = initTemp
 
-    for i in range(10000):
+    for i in range(iterations):
+        #create new solution and calculate cost
         newPath = randomNeighbor(currentPath[:])
         newCost = totalDistance(n,cities,newPath)
-        if newCost < currentCost or random.random() < math.exp((currentCost - newCost) / temperature):
+        #if new cost is less than current cost, or if random number is less
+        #than exp of the difference between the two costs divided by temperature, accept new path
+        if (newCost < currentCost or random.random() < 
+            math.exp((currentCost - newCost) / temperature)):
             currentPath, currentCost = newPath, newCost
 
+        #only updated if best solution found so far
         if currentCost < bestCost:
             bestPath, bestCost = currentPath[:], currentCost
 
+        #cooling schedule
         temperature *= 0.995
-        #if temperature < 1e-3:
-        #    break
-
+        if temperature < 1e-3:
+            break
     return bestPath, bestCost
 
-def thresholdAccepting(cities, threshold=10):
+def thresholdAccepting(cities, threshold, steps):
     n = len(cities)
     currentPath = list(range(n))
+    #creating first solution
     random.shuffle(currentPath)
     currentCost = totalDistance(n,cities, currentPath)
+    #best path/cost found throughout all iterations will be returned at end
     bestPath, bestCost = currentPath[:], currentCost
     for i in range(n):
-        for j in range(100):
+        for j in range(steps):
+            #create new solution and calculate cost
             newPath = randomNeighbor(currentPath[:])
             newCost = totalDistance(n,cities, newPath)
+            #if new cost is less than current cost and falls within threshold
             if (newCost - currentCost) < threshold:
                 currentPath, currentCost = newPath, newCost
-            if newCost < bestCost:
-                bestPath, bestCost = newPath[:], newCost
-        threshold *= 0.995
+            #only updated if best solution found so far
+            if currentCost < bestCost:
+                bestPath, bestCost = currentPath[:], currentCost
+        #lower threshold only after steps
+        threshold *= 0.955
     return bestPath, bestCost
 
-def hillClimbing(cities, iterations=10000):
+def hillClimbing(cities, iterations):
     n = len(cities)
     currentPath = list(range(n))
+    #creating first solution
+    #best path/cost found throughout all iterations will be returned at end
     random.shuffle(currentPath)
     currentCost = totalDistance(n,cities, currentPath)
-    bestPath, bestCost = currentPath[:], currentCost
 
     for _ in range(iterations):
+        #create new solution and calculate cost
         newPath = randomNeighbor(currentPath[:]) 
         newCost = totalDistance(n,cities, newPath)
-
-        if newCost < bestCost:
-            bestPath, bestCost = newPath[:], newCost
+        #only accept best solutions
+        if newCost < currentCost:
             currentPath, currentCost = newPath[:], newCost
 
-    return bestPath, bestCost
+    return currentPath, currentCost
 
-def plotTsp(cities, path, title):
+def plotTsp(cities, path, title, cost):
     plt.figure(figsize=(8, 6))
     ordered_cities = np.array([cities[i] for i in path] + [cities[path[0]]])
     plt.plot(ordered_cities[:, 0], ordered_cities[:, 1], 'o-', markersize=5, label="Path")
     plt.scatter(cities[:, 0], cities[:, 1], c='red', marker='o')
     plt.title(title)
+    plt.suptitle(cost)
     plt.show()
 
+def plotDot(cities, title):
+    plt.figure(figsize=(8, 6))
+    plt.scatter(cities[:, 0], cities[:, 1], c='red', marker='o')
+    plt.title(title)
+    plt.show()
 
 cityList = randomCities(100)
 n = len(cityList)
-print(n)
-cityDistance = totalDistance(n, cityList, range(n))
+print("Number of cities: ", n)
+print("City coordinates:")
 print(cityList)
-print(cityDistance)
+cityDistance = totalDistance(n, cityList, range(n))
+print("Initial distance:", cityDistance)
+#plotDot(cityList,"City Grid")
 
-saPath, saCost = simulatedAnnealing(cityList, 1000)
-print("simulated annealing done")
-hcPath, hcCost = hillClimbing(cityList)
-print("hill climbing done")
-taPath, taCost = thresholdAccepting(cityList)
-print("threshold accepting done")
+#simulated annealing
+print("\nSimulated Annealing")
+user_temp = input("Enter initial temperature: ")
+temp = float(user_temp)
+average1 = 0
+avgTime1 = 0
+#hill climbing
+print("Hill Climbing")
+user_ite = input("Enter number of iterations: ")
+ite = int(user_ite)
+average2 = 0
+avgTime2 = 0
+#threshold accepting
+print("Threshold Accepting")
+user_threshold = input("Enter threshold: ")
+threshold = float(user_threshold)
+average3 = 0
+avgTime3 = 0
 
-plotTsp(cityList,saPath, "Simulated Annealing")
-plotTsp(cityList,hcPath, "Hill Climbing")
-plotTsp(cityList,taPath, "Threshold Accepting")
+print("\nSimulated Annealing start...")
+for i in range(100):
+    curr = time.time()
+    saPath, saCost = simulatedAnnealing(cityList,10000,temp)
+    average1 += saCost
+    avgTime1 += (time.time()-curr)
+    #print("simulated annealing run:", i, " cost:", saCost)
+average1 /= 100
+avgTime1 /= 100
+print("Simulated Annealing average: ", average1, " time:", avgTime1)
+#plotTsp(cityList,saPath, "Simulated Annealing",saCost)
+
+print("\nHill Climbing start...")
+for i in range(100):
+    curr = time.time()
+    hcPath, hcCost = hillClimbing(cityList,ite)
+    average2 += hcCost
+    avgTime2 += (time.time()-curr)
+    #print("simulated annealing run:", i, " cost:", saCost)
+average2 /= 100
+avgTime2 /= 100
+print("Hill Climbing average: ", average2, " time:", avgTime2)
+#plotTsp(cityList,hcPath, "Hill Climbing", hcCost)
+
+print("\nThreshold Accepting start...")
+for i in range(100):
+    curr = time.time()
+    taPath, taCost = thresholdAccepting(cityList,threshold,100)
+    average3 += taCost
+    avgTime3 += (time.time()-curr)
+    #print("simulated annealing run:", i, " cost:", saCost)
+average3 /= 100
+avgTime3 /= 100
+print("Threshold Accepting average: ", average3, " time:", avgTime3)
+#plotTsp(cityList,taPath, "Threshold Accepting",taCost)
